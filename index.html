@@ -122,15 +122,15 @@ document.getElementById('calculate').addEventListener('click',()=>{
  }catch(e){error.textContent=e.message;}
 });
 
+
 function getSecurityToken() {
   if (!window.turnstile) {
     return null;
   }
 
-  return window.turnstile.getResponse(
-    document.getElementById("timecard-security")
-  );
+  return window.turnstile.getResponse();
 }
+
 
 </script>
 <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
