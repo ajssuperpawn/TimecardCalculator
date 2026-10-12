@@ -1,0 +1,218 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Timecard Calculator</title>
+<style>
+    * { box-sizing: border-box; }
+
+    body {
+        font-family: Arial, sans-serif;
+        background: #171b24;
+        color: white;
+        padding: 20px 12px;
+        margin: 0;
+        text-align: center;
+    }
+
+    .container {
+        max-width: 550px;
+        margin: auto;
+    }
+
+    h1 { color: #d4a947; }
+
+    .day {
+        display: grid;
+        grid-template-columns: 1fr 85px 85px;
+        gap: 10px;
+        align-items: center;
+        background: #292f3b;
+        padding: 12px;
+        margin-bottom: 8px;
+        border-radius: 10px;
+        text-align: left;
+    }
+
+    input {
+        width: 100%;
+        padding: 10px 4px;
+        font-size: 18px;
+        text-align: center;
+        border: 1px solid #555;
+        border-radius: 6px;
+        background: #fff;
+        color: #171b24;
+    }
+
+    button {
+        width: 100%;
+        background: #d4a947;
+        color: #171b24;
+        border: none;
+        border-radius: 10px;
+        padding: 16px;
+        font-size: 18px;
+        font-weight: bold;
+        cursor: pointer;
+        margin: 15px 0;
+    }
+
+    .result {
+        background: #292f3b;
+        padding: 15px;
+        margin: 10px 0;
+        border-radius: 10px;
+    }
+
+    .result h2 { margin: 0 0 8px; }
+
+    .value {
+        font-size: 28px;
+        font-weight: bold;
+        color: #d4a947;
+    }
+
+    .hint { color: #bfc5d1; }
+
+    #error {
+        color: #ffaaaa;
+        font-weight: bold;
+    }
+</style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Timecard Calculator</h1>
+    <p class="hint">Enter total hours worked for each day</p>
+
+    <div id="days"></div>
+
+    <button id="calculate">CALCULATE HOURS</button>
+    <p id="error" role="alert"></p>
+
+    <div class="result">
+        <h2>Regular</h2>
+        <div class="value" id="regular">--:--</div>
+    </div>
+
+    <div class="result">
+        <h2>Overtime</h2>
+        <div class="value" id="overtime">--:--</div>
+    </div>
+
+    <div class="result">
+        <h2>Double Time</h2>
+        <div class="value" id="doubletime">--:--</div>
+    </div>
+
+    <div class="result">
+        <h2>Total Worked</h2>
+        <div class="value" id="total">--:--</div>
+    </div>
+</div>
+
+<script>
+const days = [
+    "Monday", "Tuesday", "Wednesday",
+    "Thursday", "Friday", "Saturday", "Sunday"
+];
+
+const container = document.getElementById("days");
+
+days.forEach((day, index) => {
+    const row = document.createElement("div");
+    row.className = "day";
+
+    const label = document.createElement("label");
+    label.textContent = day;
+
+    const hours = document.createElement("input");
+    hours.type = "number";
+    hours.min = "0";
+    hours.max = "24";
+    hours.step = "1";
+    hours.placeholder = "Hr";
+    hours.id = `h${index}`;
+    hours.setAttribute("aria-label", `${day} hours`);
+
+    const minutes = document.createElement("input");
+    minutes.type = "number";
+    minutes.min = "0";
+    minutes.max = "59";
+    minutes.step = "1";
+    minutes.placeholder = "Min";
+    minutes.id = `m${index}`;
+    minutes.setAttribute("aria-label", `${day} minutes`);
+
+    row.append(label, hours, minutes);
+    container.appendChild(row);
+});
+
+function formatTime(minutes) {
+    const hours = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    return `${hours}:${String(mins).padStart(2, "0")}`;
+}
+
+function calculate() {
+    let regular = 0;
+    let overtime = 0;
+    let doubletime = 0;
+    let total = 0;
+
+    const dailyMinutes = [];
+    const error = document.getElementById("error");
+    error.textContent = "";
+
+    for (let i = 0; i < 7; i++) {
+        const hValue = document.getElementById(`h${i}`).value;
+        const mValue = document.getElementById(`m${i}`).value;
+
+        const h = hValue === "" ? 0 : Number(hValue);
+        const m = mValue === "" ? 0 : Number(mValue);
+
+        if (!Number.isInteger(h) || !Number.isInteger(m) ||
+            h < 0 || h > 24 || m < 0 || m > 59 ||
+            h * 60 + m > 1440) {
+            error.textContent =
+                `Please check the hours and minutes for ${days[i]}.`;
+            return;
+        }
+
+        dailyMinutes.push(h * 60 + m);
+    }
+
+    // Standard daily California overtime thresholds.
+    dailyMinutes.forEach(minutes => {
+        total += minutes;
+        regular += Math.min(minutes, 480);
+        overtime += Math.min(Math.max(minutes - 480, 0), 240);
+        doubletime += Math.max(minutes - 720, 0);
+    });
+
+    // Weekly overtime: count hours above 40 without
+    // counting daily overtime or double time twice.
+    const weeklyExcess = Math.max(regular - 2400, 0);
+    regular -= weeklyExcess;
+    overtime += weeklyExcess;
+
+    document.getElementById("regular").textContent =
+        formatTime(regular);
+    document.getElementById("overtime").textContent =
+        formatTime(overtime);
+    document.getElementById("doubletime").textContent =
+        formatTime(doubletime);
+    document.getElementById("total").textContent =
+        formatTime(total);
+}
+
+document.getElementById("calculate")
+    .addEventListener("click", calculate);
+</script>
+
+</body>
+</html>

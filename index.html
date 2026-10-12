@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Timecard Calculator v0.4</title>
+<style>
+:root{font-family:system-ui,-apple-system,Segoe UI,sans-serif;color:#f4f4f4;background:#151a20}*{box-sizing:border-box}body{margin:0;padding:18px}main{max-width:780px;margin:auto}h1{color:#e7bd64;margin-bottom:4px}p{color:#bbc4cc}.day{background:#242d37;border:1px solid #3c4854;border-radius:12px;padding:14px;margin:14px 0}.day-head,.period,.actions,.results{display:flex;justify-content:space-between;align-items:center;gap:10px}.day-head{margin-bottom:10px}.period{margin:8px 0;flex-wrap:wrap}.period label{display:flex;flex:1;min-width:110px;flex-direction:column;gap:4px;color:#c9d1d9;font-size:.85rem}input[type=time]{width:100%;min-height:42px;background:#12171d;color:#fff;border:1px solid #718091;border-radius:7px;padding:7px;font-size:1rem}button{border:0;border-radius:8px;padding:11px 14px;cursor:pointer;font-weight:700}button.add{background:#425568;color:white}button.remove{background:#613b42;color:white;padding:9px 11px}button:disabled{opacity:.45;cursor:not-allowed}button.calculate{background:#e7bd64;color:#1b1b1b;width:100%;font-size:1.1rem;margin:15px 0}.daily{color:#e7bd64;font-weight:700;white-space:nowrap}.results{flex-wrap:wrap}.result{flex:1 1 145px;background:#293440;padding:15px;border-radius:10px;text-align:center}.result strong{display:block;font-size:1.5rem;color:#e7bd64;margin-top:7px}.error{color:#ffb5b5;min-height:1.4em}small{color:#b7c0c9}
+.photo-card{background:#242d37;border:1px solid #3c4854;border-radius:12px;padding:16px;margin:18px 0}.photo-card h2{font-size:1.15rem;margin:0 0 6px}.photo-card p{font-size:.9rem;margin:5px 0 12px}.photo-controls{display:flex;gap:10px;flex-wrap:wrap;align-items:center}.photo-picker{display:inline-block;background:#425568;color:white;padding:12px 15px;border-radius:8px;font-weight:700;cursor:pointer}.photo-picker:focus-within{outline:2px solid #e7bd64;outline-offset:3px}.photo-picker input{position:absolute;width:1px;height:1px;opacity:0}.photo-clear{background:#613b42;color:#fff}.photo-preview{display:block;max-width:100%;max-height:520px;object-fit:contain;border-radius:8px;margin-top:14px;border:1px solid #718091}.photo-status{color:#c9d1d9;font-size:.85rem;margin-top:9px}.photo-status[role=alert]{color:#ffb5b5}
+</style>
+</head>
+<body><main>
+<h1>⚓ Timecard Calculator</h1><p>v0.4 · Add a timecard photo, then enter or verify clock punches. Unused periods can stay blank.</p>
+<section class="photo-card" aria-labelledby="photo-title">
+<h2 id="photo-title">📷 Timecard Photo</h2>
+<p>Take a picture or choose one from your phone's gallery. The photo stays on this device for now.</p>
+<div class="photo-controls">
+<label class="photo-picker">Take Photo / Choose Image<input id="photo-input" type="file" accept="image/*" aria-label="Take or choose a timecard photo"></label>
+<button type="button" id="photo-clear" class="photo-clear" hidden>Remove Photo</button>
+</div>
+<div id="photo-status" class="photo-status" aria-live="polite">No photo selected.</div>
+<img id="photo-preview" class="photo-preview" alt="Selected timecard photograph" hidden>
+</section>
+<div id="days"></div>
+<div id="error" class="error" role="alert"></div>
+<button class="calculate" id="calculate">CALCULATE HOURS</button>
+<div class="results">
+<div class="result">Regular<strong id="regular">0:00</strong></div>
+<div class="result">Overtime<strong id="overtime">0:00</strong></div>
+<div class="result">Double Time<strong id="doubletime">0:00</strong></div>
+<div class="result">Total Worked<strong id="total">0:00</strong></div>
+</div>
+<p><small>Assumes a Monday–Sunday workweek and ordinary California daily/weekly overtime rules, including the seventh consecutive day. Not for alternative workweek schedules or other special exceptions. Review punches before payroll.</small></p>
+</main>
+<script>
+ 'use strict';
+const photoInput=document.getElementById('photo-input');
+const photoPreview=document.getElementById('photo-preview');
+const photoStatus=document.getElementById('photo-status');
+const photoClear=document.getElementById('photo-clear');
+let photoUrl=null;
+function removePhoto(){
+ photoPreview.hidden=true;photoPreview.removeAttribute('src');
+ if(photoUrl){URL.revokeObjectURL(photoUrl);photoUrl=null;}
+ photoInput.value='';photoClear.hidden=true;photoStatus.textContent='No photo selected.';
+ photoStatus.removeAttribute('role');
+}
+photoInput.addEventListener('change',()=>{
+ const file=photoInput.files&&photoInput.files[0];
+ if(!file)return;
+ if(!file.type.startsWith('image/')){
+  removePhoto();photoStatus.textContent='Please select an image file.';photoStatus.setAttribute('role','alert');return;
+ }
+ if(photoUrl)URL.revokeObjectURL(photoUrl);
+ photoUrl=URL.createObjectURL(file);
+ photoPreview.src=photoUrl;photoPreview.hidden=false;
+ photoClear.hidden=false;photoStatus.removeAttribute('role');
+ photoStatus.textContent='Selected: '+file.name+' — review the image below.';
+});
+photoClear.addEventListener('click',removePhoto);
+window.addEventListener('pagehide',()=>{if(photoUrl)URL.revokeObjectURL(photoUrl);});
+const names=['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
+const days=document.getElementById('days');
+const error=document.getElementById('error');
+const fmt=n=>`${Math.floor(n/60)}:${String(n%60).padStart(2,'0')}`;
+const minutes=value=>{const [h,m]=value.split(':').map(Number);return h*60+m;};
+function createPeriod(container){
+ const count=container.querySelectorAll('.period').length;
+ if(count>=4)return;
+ const period=document.createElement('div');period.className='period';
+ period.innerHTML='<label>IN<input type="time" class="in"></label><label>OUT<input type="time" class="out"></label><button type="button" class="remove" aria-label="Remove period">×</button>';
+ period.querySelector('.remove').addEventListener('click',()=>{period.remove();updateAdd(container);refreshDay(container.closest('.day'));});
+ container.appendChild(period);updateAdd(container);
+}
+function updateAdd(container){const btn=container.closest('.day').querySelector('.add');btn.disabled=container.querySelectorAll('.period').length>=4;}
+function readDay(day){
+ let total=0;const ranges=[];
+ for(const period of day.querySelectorAll('.period')){
+  const start=period.querySelector('.in').value,end=period.querySelector('.out').value;
+  if(!start&&!end)continue;
+  if(!start||!end)throw Error(`${day.dataset.name}: every used period needs both IN and OUT.`);
+  const a=minutes(start),b=minutes(end);
+  if(b<=a)throw Error(`${day.dataset.name}: OUT must be later than IN (overnight shifts aren't supported yet).`);
+  ranges.push([a,b]);total+=b-a;
+ }
+ ranges.sort((a,b)=>a[0]-b[0]);
+ for(let i=1;i<ranges.length;i++)if(ranges[i][0]<ranges[i-1][1])throw Error(`${day.dataset.name}: work periods overlap.`);
+ return total;
+}
+function refreshDay(day){try{day.querySelector('.daily').textContent=fmt(readDay(day));}catch{day.querySelector('.daily').textContent='Check punches';}}
+for(const name of names){
+ const day=document.createElement('section');day.className='day';day.dataset.name=name;
+ day.innerHTML=`<div class="day-head"><strong>${name}</strong><span class="daily">0:00</span></div><div class="periods"></div><div class="actions"><button type="button" class="add">+ Add Period</button><small>Up to 4 periods</small></div>`;
+ days.appendChild(day);const container=day.querySelector('.periods');
+ day.querySelector('.add').addEventListener('click',()=>createPeriod(container));
+ day.addEventListener('input',()=>refreshDay(day));
+ createPeriod(container);createPeriod(container);
+}
+document.getElementById('calculate').addEventListener('click',()=>{
+ try{
+  error.textContent='';
+  const daily=[...document.querySelectorAll('.day')].map(readDay);
+  let regular=0,ot=0,dt=0;
+  daily.forEach((worked,index)=>{
+   const seventh=index===6&&daily.slice(0,6).every(n=>n>0);
+   if(seventh){ot+=Math.min(worked,480);dt+=Math.max(worked-480,0);}
+   else{regular+=Math.min(worked,480);ot+=Math.min(Math.max(worked-480,0),240);dt+=Math.max(worked-720,0);}
+  });
+  const weeklyExtra=Math.max(regular-2400,0);regular-=weeklyExtra;ot+=weeklyExtra;
+  document.getElementById('regular').textContent=fmt(regular);
+  document.getElementById('overtime').textContent=fmt(ot);
+  document.getElementById('doubletime').textContent=fmt(dt);
+  document.getElementById('total').textContent=fmt(daily.reduce((a,b)=>a+b,0));
+ }catch(e){error.textContent=e.message;}
+});
+</script></body></html>
