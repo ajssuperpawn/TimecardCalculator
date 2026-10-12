@@ -121,6 +121,17 @@ document.getElementById('calculate').addEventListener('click',()=>{
   document.getElementById('total').textContent=fmt(daily.reduce((a,b)=>a+b,0));
  }catch(e){error.textContent=e.message;}
 });
+
+function getSecurityToken() {
+  if (!window.turnstile) {
+    return null;
+  }
+
+  return window.turnstile.getResponse(
+    document.getElementById("timecard-security")
+  );
+}
+
 </script>
 <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
 </body>
