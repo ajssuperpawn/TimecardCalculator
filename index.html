@@ -20,6 +20,12 @@
 <div id="photo-status" class="photo-status" aria-live="polite">No photo selected.</div>
 <img id="photo-preview" class="photo-preview" alt="Selected timecard photograph" hidden>
 </section>
+<div id="timecard-security">
+  <div class="cf-turnstile"
+       data-sitekey="YOUR_PUBLIC_SITE_KEY"
+       data-theme="auto">
+  </div>
+</div>
 <div id="days"></div>
 <div id="error" class="error" role="alert"></div>
 <button class="calculate" id="calculate">CALCULATE HOURS</button>
@@ -112,4 +118,7 @@ document.getElementById('calculate').addEventListener('click',()=>{
   document.getElementById('total').textContent=fmt(daily.reduce((a,b)=>a+b,0));
  }catch(e){error.textContent=e.message;}
 });
-</script></body></html>
+</script>
+<script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+</body>
+</html>
